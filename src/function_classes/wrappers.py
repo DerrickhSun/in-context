@@ -28,3 +28,41 @@ class ScaledRegression(ModifiedFunctionClass):
     
     def evaluate(self, x_batch: Tensor, params: List[Tensor] | Tensor) -> Tensor:
         return self._scale * self._in_fc.evaluate(x_batch, params)
+
+class Switching(FunctionClass):
+    def __init__(self, inner_function_classes, switch_prob=1/10):
+        #switch prob must be less than (n-1)/n where n is the number of function classes
+        self.InnerFunctionClasses
+        self.switch_prob=switch_prob
+        self.n=len(inner_function_classes)
+       
+       
+    def evaluate(self, x_batch, Tensor, params: List[Tensor] | Tensor) -> Tensor:
+        switch=(torch.rand(x_batch) <self.n/((self.n-1)*self.switch_freq)).float() #generate indices for transition
+        switch
+       
+        #I want to sample a markow chain, where expected sojourn time is switch
+        #should be equally likelly to go to any of the others.
+        #For speed reasons, we should probably only evaluate the necessary things  
+   
+
+class Multiple(FunctionClass):
+   
+    def __init__(self,sampling:Distribution ,inner_function_classes): #sampling is a distribution of the integers
+        #0 to n-1, where n is the number of function classes.
+       
+        super(Multiple, self).__init__(*args)
+        self.InnerFunctionClasses=inner_function_classes
+        self.sampling=sampling
+       
+       
+    def evaluate(self, x_batch, Tensor, params: List[Tensor] | Tensor):
+       
+       
+   
+class Combination(ModifiedFunctionClass):
+
+    def __init__(
+       
+       
+        ):
