@@ -1,22 +1,21 @@
 
 #big picture. Want to be able to evaluate differetn models and get data on a lot of benchmarks. 
-
-    
+import numpy as np
+import torch
     
 
 #questions for nelson. 
     #exactly what information can I access in the contextmodel?
     #exactly what information is typically included in config data
 
-import numpy as np
-
-
-
-
+# runs all eval
+# config_data needs function_class and accuracy_func
+# may accept test_size, generation distribution
 def basic_eval(trained_model, config_data):
     function_class=config_data.get("function_class")
     accuracy_func=config_data.get("accuracy_func") #could also use an acc func instead
-    samples=config_data.get("samples") #change this if it is not correct
+    distribution=config_data.get("distribution", torch.MultivariateNormal(torch.zeros(2), torch.eye(2))) #this is a torch.distribution
+    samples = config_data.get("test_size", 1000)
     acc=np.zeros(samples)
     for i, (x_batch, y_batch) in zip(range(samples), self.function_class):
         output = model(xs, ys)
@@ -24,8 +23,6 @@ def basic_eval(trained_model, config_data):
     return {"accuracy": acc.mean()}
         
 def robustness_main_task(trained_model, config_data):
-    
-    
     #do the robustness validations. Adding noise, etc. 
     robustness_tasks=["scaled_x2", "scaled_x4", "scaled_x8", "scaled_y2", "scaled_y4", "scaled_y8", "noise_x.0625", "noise_x.25", "noise_x1", "noise_y.0625", "noise_y.25", "noise_y1"]
     
