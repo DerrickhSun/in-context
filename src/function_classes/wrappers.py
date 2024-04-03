@@ -29,20 +29,26 @@ class ScaledRegression(ModifiedFunctionClass):
     def evaluate(self, x_batch: Tensor, params: List[Tensor] | Tensor) -> Tensor:
         return self._scale * self._in_fc.evaluate(x_batch, params)
 
+
 class Switching(FunctionClass):
     def __init__(self, inner_function_classes, switch_prob=1/10):
         #switch prob must be less than (n-1)/n where n is the number of function classes
-        self.InnerFunctionClasses
+        self.InnerFunctionClasses=inner_function_classes
         self.switch_prob=switch_prob
         self.n=len(inner_function_classes)
        
        
     def evaluate(self, x_batch, Tensor, params: List[Tensor] | Tensor) -> Tensor:
         switch=(torch.rand(x_batch) <self.n/((self.n-1)*self.switch_freq)).float() #generate indices for transition
-        switch
+        switch*=randint(1, self.n+1)
+        
+        
+        
+        for i in range(n):
+            #generate
        
         #I want to sample a markow chain, where expected sojourn time is switch
-        #should be equally likelly to go to any of the others.
+        #should be equally likely to go to any of the others.
         #For speed reasons, we should probably only evaluate the necessary things  
    
 
@@ -53,16 +59,35 @@ class Multiple(FunctionClass):
        
         super(Multiple, self).__init__(*args)
         self.InnerFunctionClasses=inner_function_classes
-        self.sampling=sampling
-       
+        if sampling!=None:
+            self.sampling=sampling #sample function. Defualt lambda : randint(n)
+        else:
+            self.sampling=lambda : randint(len(inner_function_classes))
        
     def evaluate(self, x_batch, Tensor, params: List[Tensor] | Tensor):
-       
+        n=len(self.InnerFunctionClasses)
+        
+        return self.InnerFunctionClasses[self.sampling()].evalute(x_batch, params)
+        
        
    
 class Combination(ModifiedFunctionClass):
 
     def __init__(
-       
-       
+            self,
+            distribution:Distribution,
+            inner_function_classes
         ):
+        super(Multiple, self).__init__(*args)
+        self.innerFunctionClasses=inner_function_classes
+        if distribution!=None:
+            self.distribution=distribution #default standard 1/n of each. 
+        else:
+            self.distribution=lambda: return [1/len(inner_function_classes)]*len(function_classes)
+        
+        
+        
+    def evaluate(self, x_batch, Tensor, params):
+        
+        return None
+        
