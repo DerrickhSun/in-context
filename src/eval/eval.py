@@ -18,10 +18,7 @@ def basic_eval(trained_model, config_data):
     accuracy_func=config_data.get("accuracy_func") #could also use an acc func instead
     samples=config_data.get("samples") #change this if it is not correct
     acc=np.zeros(samples)
-    for i in range(samples):
-        seq_batch = [[(x, y) for x, y in function] for function in function_class.get_function_iter()]
-        xs = [[xy_pair[0] for xy_pair in seq] for seq in seq_batch]
-        ys = [[xy_pair[1] for xy_pair in seq] for seq in seq_batch] #change if they write something better
+    for i, (x_batch, y_batch) in zip(range(samples), self.function_class):
         output = model(xs, ys)
         acc[i] = accuracy_func(output, ys)
     return {"accuracy": acc.mean()}
@@ -47,11 +44,9 @@ def robustness_main_task(trained_model, config_data):
     
     #function_classes=None #Might add this if it makes more sense to move stuff to the backend. 
     
-    for i in range(samples):
-        seq_batch = [[(x, y) for x, y in function] for function in function_class.get_function_iter()]
-        xs = [[xy_pair[0] for xy_pair in seq] for seq in seq_batch]
-        ys = [[xy_pair[1] for xy_pair in seq] for seq in seq_batch] #change if they write something better
-        
+    for i, (x_batch, y_batch) in zip(range(samples), self.function_class):
+
+
         for task, i in enumerate(robustness_tasks):
             curxs=xs
             curys=ys

@@ -45,6 +45,8 @@ class Switching(FunctionClass):
         
         
         for i in range(n):
+            continue
+        return 
             #generate
        
         #I want to sample a markow chain, where expected sojourn time is switch
@@ -53,7 +55,6 @@ class Switching(FunctionClass):
    
 
 class Multiple(FunctionClass):
-   
     def __init__(self,sampling:Distribution ,inner_function_classes): #sampling is a distribution of the integers
         #0 to n-1, where n is the number of function classes.
        
@@ -83,7 +84,7 @@ class Combination(ModifiedFunctionClass):
         if distribution!=None:
             self.distribution=distribution #default standard 1/n of each. 
         else:
-            self.distribution=lambda: return [1/len(inner_function_classes)]*len(function_classes)
+            self.distribution=None #lambda: return [1/len(inner_function_classes)]*len(function_classes)
         
         
         
