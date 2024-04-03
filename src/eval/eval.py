@@ -8,6 +8,7 @@
     #exactly what information can I access in the contextmodel?
     #exactly what information is typically included in config data
 
+import numpy as np
 
 
 
