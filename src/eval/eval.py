@@ -11,18 +11,37 @@ import torch
 # runs all eval
 # config_data needs function_class and accuracy_func
 # may accept test_size, generation distribution
-def basic_eval(trained_model, config_data):
+def basic_eval(model, config_data):
     function_class=config_data.get("function_class")
-    accuracy_func=config_data.get("accuracy_func") #could also use an acc func instead
-    distribution=config_data.get("distribution", torch.MultivariateNormal(torch.zeros(2), torch.eye(2))) #this is a torch.distribution
-    samples = config_data.get("test_size", 1000)
-    acc=np.zeros(samples)
-    for i, (x_batch, y_batch) in zip(range(samples), self.function_class):
-        output = model(xs, ys)
-        acc[i] = accuracy_func(output, ys)
-    return {"accuracy": acc.mean()}
+    accuracy_func=config_data.get("accuracy_func") #could also use an acc func instead. #has to do each cell individually
+    samples = config_data.get("samples", 1000)
+
+    #probably not necessary
+    distribution=config_data.get("distribution", torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(2), torch.eye(2))) #this is a torch.distribution
+    
+    
+    #do something smarter than this, probably get it from the function class
+    seq_length =config_data.get("seq_length")  
+    batch_size = config_data.get("batch_size")
+
+    #create thing
+    acc=torch.zeros((samples, batch_size, seq_length))
+
+    for i, (x_batch, y_batch) in zip(range(samples), function_class):
+        output = model(x_batch, y_batch)
+        acc[i] = accuracy_func(output, y_batch)
+    
+    acc=torch.reshape(acc, (samples*batch_size, seq_length))
+    std=torch.std(acc, dim=0)
+    stats={"accuracy": acc.mean(dim=0), "std": std, "std_mean": std/np.sqrt(samples*batch_size)}
+    quantiles=torch.quantile(acc, torch.Tensor([0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 1]), dim=0)
+    stats["max"]=quantiles[len(quantiles)-1]
+    stats["min"]=quantiles[0]
+    for i in range(1, len(quantiles)-1):
+        stats["quantile"+str([0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 1][i])]=quantiles[i]
+    return stats
         
-def robustness_main_task(trained_model, config_data):
+def robustness_main_task(model, config_data):
     #do the robustness validations. Adding noise, etc. 
     robustness_tasks=["scaled_x2", "scaled_x4", "scaled_x8", "scaled_y2", "scaled_y4", "scaled_y8", "noise_x.0625", "noise_x.25", "noise_x1", "noise_y.0625", "noise_y.25", "noise_y1"]
     
@@ -41,7 +60,7 @@ def robustness_main_task(trained_model, config_data):
     
     #function_classes=None #Might add this if it makes more sense to move stuff to the backend. 
     
-    for i, (x_batch, y_batch) in zip(range(samples), self.function_class):
+    for i, (x_batch, y_batch) in zip(range(samples), function_class):
 
 
         for task, i in enumerate(robustness_tasks):
@@ -63,7 +82,7 @@ def robustness_main_task(trained_model, config_data):
     return robustness_nums
     
     
-def expressivity_main_task(trained_model, config_data):
+def expressivity_main_task(model, config_data):
     
     #what natural task are there without accessing inner information. Like its easy with specific cases. 
     #if it has a latent variable, we can increase that.
@@ -72,7 +91,7 @@ def expressivity_main_task(trained_model, config_data):
     return {}
 
     
-def performance_eval(trained_model, config_data): #input is a trained model. 
+def performance_eval(model, config_data): #input is a trained model. 
     #config_data should have all necessary data to test a model in real time at typical problems. 
     #should we include more specific "wierd" data? Probably should not impact performance mostly
     performance_data={}
