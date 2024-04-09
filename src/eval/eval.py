@@ -2,6 +2,7 @@
 #big picture. Want to be able to evaluate differetn models and get data on a lot of benchmarks. 
 import numpy as np
 import torch
+from function_classes.wrappers import NoisyRegression, ScaledRegression
     
 
 #questions for nelson. 
@@ -16,13 +17,8 @@ def basic_eval(model, config_data):
     accuracy_func=config_data.get("accuracy_func") #could also use an acc func instead. #has to do each cell individually
     samples = config_data.get("samples", 1000)
 
-    #probably not necessary
-    distribution=config_data.get("distribution", torch.distributions.multivariate_normal.MultivariateNormal(torch.zeros(2), torch.eye(2))) #this is a torch.distribution
-    
-    
-    #do something smarter than this, probably get it from the function class
-    seq_length =config_data.get("seq_length")  
-    batch_size = config_data.get("batch_size")
+    batch_size = function_class.batch_size
+    seq_length = function_class.sequence_length
 
     #create thing
     acc=torch.zeros((samples, batch_size, seq_length))
@@ -43,42 +39,82 @@ def basic_eval(model, config_data):
         
 def robustness_main_task(model, config_data):
     #do the robustness validations. Adding noise, etc. 
-    robustness_tasks=["scaled_x2", "scaled_x4", "scaled_x8", "scaled_y2", "scaled_y4", "scaled_y8", "noise_x.0625", "noise_x.25", "noise_x1", "noise_y.0625", "noise_y.25", "noise_y1"]
-    
+
+
+    robustness_tasks=[]
+
+    robustness_nums={}
+
+    for scale in [0.125, 0.25, 0.5, 2, 4, 8]:
+        robustness_tasks.append(["scaled_x", scale])
+        robustness_tasks.append(["scaled_y", scale])
+        
+    for noise in [0.0625, 0.125, 0.25, 0.5, 1]:
+        robustness_tasks.append(["noise_x", noise])
+        robustness_tasks.append(["noise_y", noise])    
+
     #might add some other distributionsional shifts or change these later. 
     
     function_class=config_data.get("function_class")
     accuracy_func=config_data.get("accuracy_func") #could also use an acc func instead
-    samples=config_data.get("samples") #change this if it is not correct
+    samples=config_data.get("samples", 1000)
     
     noise_x_func=config_data.get("noise_x_func") #function that takes an array and a scaling factor, and outputs
     noise_y_func=config_data.get("noise_y_func") #noised variables. Should be main task specific
     
-    #must have some check if task is classification rather than simply predicting a value. E.G. randomly flipping
-    #maybe ask for implementation of this by the other guys 
-    #does it make more sense to do everything here locally?
-    
-    #function_classes=None #Might add this if it makes more sense to move stuff to the backend. 
-    
-    for i, (x_batch, y_batch) in zip(range(samples), function_class):
+    #scaled_x_tasks=[0.125, 0.25, 0.5, 2, 4,  8] #can do it this way instead. Might be better, but would require some extra code some places
+    #scaled_y_tasks=[0.125, 0.25, 0.5, 2, 4,  8]
+    #noise_x_tasks=[0.0625, 0.125, 0.25, 0.5, 1]
+    #noise_y_tasks=[0.0625, 0.125, 0.25, 0.5, 1]
+    #function_classes=[]
+    #for scale in scaled_x_tasks:
+    #    function_classes.append    #must implement the correct function class in wrappers first
+    #for scale in scaled_y_tasks:
+    #    function_classes.append(ScaledRegression(inner_function_class=function_class, scale=scale)) 
+    #for noise in noise_x_tasks>
+    #   function_classes.append #must implement the correct function class in wrappers first
+    #for noise in noise_y_tasks:
+    #    function_classes.append(NoisyRegression(inner_function_class=function_class, output_noise_distribution=noise_y_func))
 
+    batch_size = function_class.batch_size
+    seq_length = function_class.sequence_length
 
-        for task, i in enumerate(robustness_tasks):
-            curxs=xs
-            curys=ys
+    for task, j in enumerate(robustness_tasks):
+        
+        acc=torch.zeros((samples, batch_size, seq_length))
+    
+        for i, (x_batch, y_batch) in zip(range(samples), function_class):
+
+            curxs=x_batch
+            curys=y_batch
             
-            if task[:8]=="scaled_x":
-                curxs=xs*int(task[8])
-            elif task[:8]=="scaled_y":
-                curys=ys*int(task[8])
-            elif task[:7]=="noise_x":
-                curxs=noise_x_func(xs, task[7])
-            elif task[:7]=="noise_y":
-                curys=noise_y_func(ys, task[7])
+            if task[0]=="scaled_x":
+                curxs*=task[1]
+            elif task[0]=="scaled_y":
+                curys*=task[1]
+            elif task[0]=="noise_x":
+                curxs=noise_x_func(task[1])(curxs)
+            elif task[0]=="noise_y":
+                curys=noise_y_func(task[1])(curys)
                 
             output = model(curxs, curys)
-            robustness_nums[task] = accuracy_func(output, curys)
-    
+        
+            robustness_nums[i] = accuracy_func(output, curys)
+
+        acc=torch.reshape(acc, (samples*batch_size, seq_length))
+        std=torch.std(acc, dim=0)
+        robustness_nums[task[0]+"_"+str(task[1])+"_accuracy"]=acc.mean(dim=0)
+        robustness_nums[task[0]+"_"+str(task[1])+"_std"]=std
+        robustness_nums[task[0]+"_"+str(task[1])+"_std_mean"]=std/np.sqrt(samples*batch_size)
+
+        quantiles=torch.quantile(acc, torch.Tensor([0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 1]), dim=0)
+        robustness_nums[task[0]+"_"+str(task[1])+"_max"]=quantiles[len(quantiles)-1]
+        robustness_nums[task[0]+"_"+str(task[1])+"_min"]=quantiles[0]
+        
+        for i in range(1, len(quantiles)-1):
+            robustness_nums[task[0]+"_"+str(task[1])+"quantile"+str([0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 1][i])]=quantiles[i]
+        
+
     return robustness_nums
     
     

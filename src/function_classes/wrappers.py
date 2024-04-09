@@ -20,7 +20,7 @@ class NoisyRegression(ModifiedFunctionClass):
 class ScaledRegression(ModifiedFunctionClass):
     def __init__(
             self,
-            scale: int,
+            scale: float,
             inner_function_class: FunctionClass
         ):
         super(ScaledRegression, self).__init__(inner_function_class)
