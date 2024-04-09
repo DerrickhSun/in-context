@@ -3,27 +3,34 @@
 import numpy as np
 import torch
 from function_classes.wrappers import NoisyRegression, ScaledRegression
+import torch.distributions as D
     
 
 #questions for nelson. 
     #exactly what information can I access in the contextmodel?
     #exactly what information is typically included in config data
 
-# runs all eval
+# runs accuracy eval
 # config_data needs function_class and accuracy_func
-# may accept test_size, generation distribution
-def basic_eval(model, config_data):
-    function_class=config_data.get("function_class")
-    accuracy_func=config_data.get("accuracy_func") #could also use an acc func instead. #has to do each cell individually
-    samples = config_data.get("samples", 1000)
+# may accept test_size, generation distribution for inputs
+def basic_eval(model, function_class, accuracy_func, test_size = 1000, distribution = D.Normal):
+    samples = test_size
 
     batch_size = function_class.batch_size
     seq_length = function_class.sequence_length
+    param_dist_shape = torch.Size([batch_size, seq_length])
+
+    # creating distribution instance for inputs
+    distribution = distribution(torch.zeros(param_dist_shape), torch.ones(param_dist_shape))
+    #distribution = model._init_param_dist
 
     #create thing
     acc=torch.zeros((samples, batch_size, seq_length))
 
-    for i, (x_batch, y_batch) in zip(range(samples), function_class):
+    #for i, (x_batch, y_batch) in zip(range(samples), function_class):
+    for i in range(samples):
+        x_batch = distribution.sample()
+        y_batch = function_class.evaluate(x_batch, function_class._init_param_dist())
         output = model(x_batch, y_batch)
         acc[i] = accuracy_func(output, y_batch)
     
@@ -39,8 +46,6 @@ def basic_eval(model, config_data):
         
 def robustness_main_task(model, config_data):
     #do the robustness validations. Adding noise, etc. 
-
-
     robustness_tasks=[]
 
     robustness_nums={}
