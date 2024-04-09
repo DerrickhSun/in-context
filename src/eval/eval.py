@@ -12,27 +12,21 @@ import torch.distributions as D
 
 # runs accuracy eval
 # config_data needs function_class and accuracy_func
-# may accept test_size, generation distribution for inputs
-def basic_eval(model, function_class, accuracy_func, test_size = 1000, distribution = D.Normal):
+# may accept test_size
+# input distribution supplied by function_class
+def basic_eval(model, function_class, accuracy_func, test_size = 1000):
     samples = test_size
 
     batch_size = function_class.batch_size
     seq_length = function_class.sequence_length
-    param_dist_shape = torch.Size([batch_size, seq_length])
-
-    # creating distribution instance for inputs
-    distribution = distribution(torch.zeros(param_dist_shape), torch.ones(param_dist_shape))
 
     #create thing
     acc=torch.zeros((samples, batch_size, seq_length))
 
-    for i in range(samples):
-        x_batch = distribution.sample()
-        y_batch = function_class.evaluate(x_batch, function_class._init_param_dist())
+    for i, (x_batch, y_batch) in zip(range(samples), function_class):
         output = model(x_batch, y_batch)
         acc[i] = accuracy_func(output, y_batch)
     
-    # I assumed this was correct and didn't look over it - Derrick
     acc=torch.reshape(acc, (samples*batch_size, seq_length))
     std=torch.std(acc, dim=0)
     stats={"accuracy": acc.mean(dim=0), "std": std, "std_mean": std/np.sqrt(samples*batch_size)}
@@ -43,7 +37,7 @@ def basic_eval(model, function_class, accuracy_func, test_size = 1000, distribut
         stats["quantile"+str([0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 1][i])]=quantiles[i]
     return stats
         
-def robustness_main_task(model, config_data):
+def robustness_main_task(model, function_class, accuracy_func, noise_x_func, noise_y_func, test_size = 1000):
     #do the robustness validations. Adding noise, etc. 
     robustness_tasks=[]
 
@@ -59,31 +53,16 @@ def robustness_main_task(model, config_data):
 
     #might add some other distributionsional shifts or change these later. 
     
-    function_class=config_data.get("function_class")
-    accuracy_func=config_data.get("accuracy_func") #could also use an acc func instead
-    samples=config_data.get("samples", 1000)
-    
-    noise_x_func=config_data.get("noise_x_func") #function that takes an array and a scaling factor, and outputs
-    noise_y_func=config_data.get("noise_y_func") #noised variables. Should be main task specific
-    
-    #scaled_x_tasks=[0.125, 0.25, 0.5, 2, 4,  8] #can do it this way instead. Might be better, but would require some extra code some places
-    #scaled_y_tasks=[0.125, 0.25, 0.5, 2, 4,  8]
-    #noise_x_tasks=[0.0625, 0.125, 0.25, 0.5, 1]
-    #noise_y_tasks=[0.0625, 0.125, 0.25, 0.5, 1]
-    #function_classes=[]
-    #for scale in scaled_x_tasks:
-    #    function_classes.append    #must implement the correct function class in wrappers first
-    #for scale in scaled_y_tasks:
-    #    function_classes.append(ScaledRegression(inner_function_class=function_class, scale=scale)) 
-    #for noise in noise_x_tasks>
-    #   function_classes.append #must implement the correct function class in wrappers first
-    #for noise in noise_y_tasks:
-    #    function_classes.append(NoisyRegression(inner_function_class=function_class, output_noise_distribution=noise_y_func))
+    #functionclass for function that takes an array and a scaling factor, and outputs
+    #noised variables. Should be main task specific
+    # i figure we can just use torch distributions
+    #noise_x_func=config_data.get("noise_x_func") 
+    #noise_y_func=config_data.get("noise_y_func") 
 
     batch_size = function_class.batch_size
     seq_length = function_class.sequence_length
 
-    for task, j in enumerate(robustness_tasks):
+    for j, task in enumerate(robustness_tasks):
         
         acc=torch.zeros((samples, batch_size, seq_length))
     
@@ -120,8 +99,7 @@ def robustness_main_task(model, config_data):
         
 
     return robustness_nums
-    
-    
+       
 def expressivity_main_task(model, config_data):
     
     #what natural task are there without accessing inner information. Like its easy with specific cases. 
@@ -130,7 +108,6 @@ def expressivity_main_task(model, config_data):
     
     return {}
 
-    
 def performance_eval(model, config_data): #input is a trained model. 
     #config_data should have all necessary data to test a model in real time at typical problems. 
     #should we include more specific "wierd" data? Probably should not impact performance mostly
@@ -149,7 +126,6 @@ def robustness_general_task(model, config_data):
     
     return nobustness_nums
 
-    
 def eval_model(model, config_data):
 
     
