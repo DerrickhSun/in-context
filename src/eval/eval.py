@@ -100,13 +100,39 @@ def robustness_main_task(model, function_class, accuracy_func, noise_x_func, noi
 
     return robustness_nums
        
-def expressivity_main_task(model, config_data):
+def expressivity_main_task(model, accuracy_func, threshold = 0.1, limit = 10, test_size = 1000):
     
     #what natural task are there without accessing inner information. Like its easy with specific cases. 
     #if it has a latent variable, we can increase that.
     #otherwise quite hard.
+
+    # we can use decision tree as a weak test for expressivity
+    return decision_tree_eval(model, accuracy_func, test_size = test_size)
+
+def decision_tree_eval(model, accuracy_func, threshold = 0.5, limit = 10, test_size = 1000):
+    prev = 0
+    depth = 1
+    accuracies = {}
+    while (depth < 2 or prev > threshold) and depth < limit:
+        samples = test_size
+        shape = torch.Size(1,3)
+        function_class = DecisionTreeRegression(depth = depth, D.Normal(torch.zeros(shape), torch.ones(shape)))
+
+        batch_size = function_class.batch_size
+        seq_length = function_class.sequence_length
+
+        #create thing
+        acc=torch.zeros((samples, batch_size, seq_length))
+
+        for i, (x_batch, y_batch) in zip(range(samples), function_class):
+            output = model(x_batch, y_batch)
+            acc[i] = accuracy_func(output, y_batch)
     
-    return {}
+        acc=torch.reshape(acc, (samples*batch_size, seq_length))
+        avgAcc =  acc.mean(dim=0)
+        accuracies[f'depth {depth}', avgAcc]
+    
+    return accuracies
 
 def performance_eval(model, config_data): #input is a trained model. 
     #config_data should have all necessary data to test a model in real time at typical problems. 
