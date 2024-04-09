@@ -22,18 +22,17 @@ def basic_eval(model, function_class, accuracy_func, test_size = 1000, distribut
 
     # creating distribution instance for inputs
     distribution = distribution(torch.zeros(param_dist_shape), torch.ones(param_dist_shape))
-    #distribution = model._init_param_dist
 
     #create thing
     acc=torch.zeros((samples, batch_size, seq_length))
 
-    #for i, (x_batch, y_batch) in zip(range(samples), function_class):
     for i in range(samples):
         x_batch = distribution.sample()
         y_batch = function_class.evaluate(x_batch, function_class._init_param_dist())
         output = model(x_batch, y_batch)
         acc[i] = accuracy_func(output, y_batch)
     
+    # I assumed this was correct and didn't look over it - Derrick
     acc=torch.reshape(acc, (samples*batch_size, seq_length))
     std=torch.std(acc, dim=0)
     stats={"accuracy": acc.mean(dim=0), "std": std, "std_mean": std/np.sqrt(samples*batch_size)}
