@@ -5,7 +5,7 @@ import torch
 from function_classes.wrappers import NoisyRegression, ScaledRegression
 import torch.distributions as D
 from function_classes import DecisionTreeRegression
-    
+import os
 
 #questions for nelson. 
     #exactly what information can I access in the contextmodel?
@@ -16,13 +16,14 @@ def basic_eval(model, config_data):
     function_class = config_data.get('function_class')
     accuracy_func = config_data.get('accuracy_func')
     test_size = config_data.get('test_size', 1000)
-    return basic_eval_func(model, function_class, accuracy_func, test_size)
+    save_path=config_data.get('save_path', None)
+    return basic_eval_func(model, function_class, accuracy_func, test_size, save_path)
 
 # runs accuracy eval
 # config_data needs function_class and accuracy_func
 # may accept test_size
 # input distribution supplied by function_class
-def basic_eval_func(model, function_class, accuracy_func, test_size = 1000):
+def basic_eval_func(model, function_class, accuracy_func, test_size = 1000, save_path=None):
     samples = test_size
 
     batch_size = function_class.batch_size
@@ -41,6 +42,10 @@ def basic_eval_func(model, function_class, accuracy_func, test_size = 1000):
     stats["min"]=quantiles[0]
     for i in range(1, len(quantiles)-1):
         stats["quantile"+str([0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 1][i])]=quantiles[i]
+    if save_path!=None:
+        os.makedirs(save_path, exist_ok=True)
+        torch.save(stats, os.path.join(save_path, model.name))
+
     return stats
         
 def robustness_main_task(model, config_data):
@@ -49,10 +54,11 @@ def robustness_main_task(model, config_data):
     test_size = config_data.get('test_size', 1000)
     noise_x_func = config_data.get('noise_x_func')
     noise_y_func = config_data.get('noise_y_func')
+    save_path=config_data.get('save_path', None)
 
-    return robustness_main_task_func(model, function_class, accuracy_func, noise_x_func, noise_y_func, test_size)
+    return robustness_main_task_func(model, function_class, accuracy_func, noise_x_func, noise_y_func, test_size, save_path)
 
-def robustness_main_task_func(model, function_class, accuracy_func, noise_x_func, noise_y_func, test_size = 1000):
+def robustness_main_task_func(model, function_class, accuracy_func, noise_x_func, noise_y_func, test_size = 1000, save_path=None):
     #do the robustness validations. Adding noise, etc. 
     robustness_tasks=[]
 
@@ -79,7 +85,7 @@ def robustness_main_task_func(model, function_class, accuracy_func, noise_x_func
     samples = test_size
 
     for j, task in enumerate(robustness_tasks):
-        
+        print(j, task)
         acc=torch.zeros((samples, batch_size, seq_length))
     
         for i, (x_batch, y_batch) in zip(range(samples), function_class):
@@ -98,8 +104,8 @@ def robustness_main_task_func(model, function_class, accuracy_func, noise_x_func
                 
             output = model(curxs, curys)
         
-            robustness_nums[i] = accuracy_func(output, curys)
-
+            acc[i] = accuracy_func(output, curys)
+            
         acc=torch.reshape(acc, (samples*batch_size, seq_length))
         std=torch.std(acc, dim=0)
         robustness_nums[task[0]+"_"+str(task[1])+"_accuracy"]=acc.mean(dim=0)
@@ -113,6 +119,10 @@ def robustness_main_task_func(model, function_class, accuracy_func, noise_x_func
         for i in range(1, len(quantiles)-1):
             robustness_nums[task[0]+"_"+str(task[1])+"quantile"+str([0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 1][i])]=quantiles[i]
         
+    if save_path!=None:
+        os.makedirs(save_path, exist_ok=True)
+        torch.save(stats, os.path.join(save_path, 'robustness_'+model.name))
+    
 
     return robustness_nums
        
@@ -221,5 +231,10 @@ def eval_model(model, config_data):
     
     return benchmark_nums
 
+def get_eval_data(save_path, model_names):
+    data={}
+    for name in model_names:
+        data[name]=torch.load(os.path.join(save_path, name))
+    return data
 
 
