@@ -48,6 +48,21 @@ def basic_eval_func(model, function_class, accuracy_func, test_size = 1000, save
 
     return stats
         
+def eval_multiple_models(models, config_data):
+    function_class = config_data.get('function_class')
+    accuracy_func = config_data.get('accuracy_func')
+    test_size = config_data.get('test_size', 1000)
+    save_path=config_data.get('save_path', None)
+    return basic_eval_func(models, function_class, accuracy_func, test_size, save_path)
+
+
+def eval_multiple_models_func(models, function_class, accuracy_func, test_size=1000, save_path=None)
+    data={}
+    for model in models:
+        data[model]=basic_eval_func(model, function_class, accuracy_func, test_size, save_path)
+    return data
+
+
 def robustness_main_task(model, config_data):
     function_class = config_data.get('function_class')
     accuracy_func = config_data.get('accuracy_func')

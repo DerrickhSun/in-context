@@ -1,5 +1,5 @@
 from typing import List
-from torch import Tensor
+from torch import Tensor, randint
 from torch.distributions.distribution import Distribution
 from core import FunctionClass, ModifiedFunctionClass
 
@@ -65,9 +65,7 @@ class Multiple(FunctionClass):
         else:
             self.sampling=lambda : randint(len(inner_function_classes))
        
-    def evaluate(self, x_batch, Tensor, params: List[Tensor] | Tensor):
-        n=len(self.InnerFunctionClasses)
-        
+    def evaluate(self, x_batch: Tensor, params: List[Tensor] | Tensor):
         return self.InnerFunctionClasses[self.sampling()].evalute(x_batch, params)
         
        
@@ -80,15 +78,13 @@ class Combination(ModifiedFunctionClass):
             inner_function_classes
         ):
         super(Multiple, self).__init__(*args)
-        self.innerFunctionClasses=inner_function_classes
-        if distribution!=None:
-            self.distribution=distribution #default standard 1/n of each. 
+        self.InnerFunctionClasses=inner_function_classes
+        self.distribution=distribution #default standard 1/n of each.
+        
+    def evaluate(self, x_batch: Tensor, params: List[Tensor] | Tensor):
+        if self.distribution!=None:
+            weights=self.distribution
         else:
-            self.distribution=None #lambda: return [1/len(inner_function_classes)]*len(function_classes)
-        
-        
-        
-    def evaluate(self, x_batch, Tensor, params):
-        
-        return None
+            weeights=[1/len(self.InnerFunctionClasses)]*len(self.InnerFunctionClasses)
+        return sum([function_class.evaluate(x_batch, params)*weights[i] for i, function_class in enumerate(self.InnerFunctionClasses) ])
         
