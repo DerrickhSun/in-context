@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from function_classes.wrappers import NoisyRegression, ScaledRegression
 import torch.distributions as D
+from function_classes import DecisionTreeRegression
     
 
 #questions for nelson. 
@@ -132,8 +133,7 @@ def decision_tree_eval(model, accuracy_func, threshold = 0.5, limit = 10, test_s
     accuracies = {}
     while (depth < 2 or prev > threshold) and depth < limit:
         samples = test_size
-        shape = torch.Size(1,3)
-        function_class = DecisionTreeRegression(depth = depth)
+        function_class = DecisionTreeRegression(depth, D.Normal(torch.zeros((4, 100, 10)), torch.ones((4, 100 ,10))))
 
         batch_size = function_class.batch_size
         seq_length = function_class.sequence_length
