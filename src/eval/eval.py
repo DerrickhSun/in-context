@@ -27,8 +27,6 @@ def basic_eval_func(model, function_class, accuracy_func, test_size = 1000):
 
     batch_size = function_class.batch_size
     seq_length = function_class.sequence_length
-
-    #create thing
     acc=torch.zeros((samples, batch_size, seq_length))
 
     for i, (x_batch, y_batch) in zip(range(samples), function_class):
