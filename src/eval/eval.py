@@ -10,11 +10,18 @@ import torch.distributions as D
     #exactly what information can I access in the contextmodel?
     #exactly what information is typically included in config data
 
+#wrapper for config_data version
+def basic_eval(model, config_data):
+    function_class = config_data.get('function_class')
+    accuracy_func = config_data.get('accuracy_func')
+    test_size = config_data.get('test_size', 1000)
+    return basic_eval_func(model, function_class, accuracy_func, test_size)
+
 # runs accuracy eval
 # config_data needs function_class and accuracy_func
 # may accept test_size
 # input distribution supplied by function_class
-def basic_eval(model, function_class, accuracy_func, test_size = 1000):
+def basic_eval_func(model, function_class, accuracy_func, test_size = 1000):
     samples = test_size
 
     batch_size = function_class.batch_size
@@ -37,7 +44,16 @@ def basic_eval(model, function_class, accuracy_func, test_size = 1000):
         stats["quantile"+str([0, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99, 1][i])]=quantiles[i]
     return stats
         
-def robustness_main_task(model, function_class, accuracy_func, noise_x_func, noise_y_func, test_size = 1000):
+def robustness_main_task(model, config_data):
+    function_class = config_data.get('function_class')
+    accuracy_func = config_data.get('accuracy_func')
+    test_size = config_data.get('test_size', 1000)
+    noise_x_func = config_data.get('noise_x_func')
+    noise_y_func = config_data.get('noise_y_func')
+
+    return robustness_main_task_func(model, function_class, accuracy_func, noise_x_func, noise_y_func, test_size)
+
+def robustness_main_task_func(model, function_class, accuracy_func, noise_x_func, noise_y_func, test_size = 1000):
     #do the robustness validations. Adding noise, etc. 
     robustness_tasks=[]
 
@@ -61,6 +77,7 @@ def robustness_main_task(model, function_class, accuracy_func, noise_x_func, noi
 
     batch_size = function_class.batch_size
     seq_length = function_class.sequence_length
+    samples = test_size
 
     for j, task in enumerate(robustness_tasks):
         
@@ -100,7 +117,7 @@ def robustness_main_task(model, function_class, accuracy_func, noise_x_func, noi
 
     return robustness_nums
        
-def expressivity_main_task(model, accuracy_func, threshold = 0.1, limit = 10, test_size = 1000):
+def expressivity_main_task(model, accuracy_func, test_size = 1000):
     
     #what natural task are there without accessing inner information. Like its easy with specific cases. 
     #if it has a latent variable, we can increase that.
@@ -116,7 +133,7 @@ def decision_tree_eval(model, accuracy_func, threshold = 0.5, limit = 10, test_s
     while (depth < 2 or prev > threshold) and depth < limit:
         samples = test_size
         shape = torch.Size(1,3)
-        function_class = DecisionTreeRegression(depth = depth, D.Normal(torch.zeros(shape), torch.ones(shape)))
+        function_class = DecisionTreeRegression(depth = depth)
 
         batch_size = function_class.batch_size
         seq_length = function_class.sequence_length
