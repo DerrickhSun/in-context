@@ -1,5 +1,5 @@
 from typing import List
-from torch import Tensor, randint
+from torch import Tensor
 from torch.distributions.distribution import Distribution
 from core import FunctionClass, ModifiedFunctionClass
 
@@ -20,7 +20,11 @@ class NoisyRegression(ModifiedFunctionClass):
 class ScaledRegression(ModifiedFunctionClass):
     def __init__(
             self,
+<<<<<<< HEAD
             scale: float,
+=======
+            scale: int,
+>>>>>>> 30322eca85891d7ebbb6bf0a95c456d50b322cb7
             inner_function_class: FunctionClass
         ):
         super(ScaledRegression, self).__init__(inner_function_class)
@@ -28,6 +32,7 @@ class ScaledRegression(ModifiedFunctionClass):
     
     def evaluate(self, x_batch: Tensor, params: List[Tensor] | Tensor) -> Tensor:
         return self._scale * self._in_fc.evaluate(x_batch, params)
+<<<<<<< HEAD
 
 
 class Switching(FunctionClass):
@@ -88,3 +93,5 @@ class Combination(ModifiedFunctionClass):
             weeights=[1/len(self.InnerFunctionClasses)]*len(self.InnerFunctionClasses)
         return sum([function_class.evaluate(x_batch, params)*weights[i] for i, function_class in enumerate(self.InnerFunctionClasses) ])
         
+=======
+>>>>>>> 30322eca85891d7ebbb6bf0a95c456d50b322cb7
